@@ -15,7 +15,7 @@ def main():
 
 
 def download_dir(url, output_dir):
-    # 1. ターゲットファイルの内容を取得
+    # 1. Get the contents of the target file.
     os.makedirs(output_dir, exist_ok=True)
     save_file(url, output_dir + "/curl.txt", type="text/html")
 
@@ -23,41 +23,46 @@ def download_dir(url, output_dir):
         lines = f.readlines()
         f.close()
 
-    # 2. ターゲットファイルからaタグ内のリンクを取得
+    # 2. Get the link in the a tag from the target file.
     file_path = []
     for line in lines:
         if re.search(r'href="(.*?)"', line):
             file_path.append(trance_path(resub_href(line), url))
 
     for file in file_path:
-        # 親ディレクトリ以上に戻らないように文字数で比較
+        # To avoid going back to the hierarchy above the parent directory,
+        # compare by the number of characters.
         if file.count('/') < url.count('/'):
             continue
-        # パスからファイル名を抽出
+        # Extract file names from paths.
         file_name = re.sub('(.*?)/', '', file)
-        # パスの末尾が/の時はそのディレクトリ名を抽出
+        # Extracts the directory name when the path ends in /.
         if file[-1] == '/':
             file_name = re.split('/', file)[-2]
-        # ここまででファイル名が抽出できていない場合はcontinue
+        # If the file name has not been extracted by this point, continue.
         if file_name == "":
             continue
-        # パスがディレクトリだった場合は再帰
+        # If the path is a directory, recursion.
         if is_dir(file):
             download_dir(file, output_dir + "/" + file_name)
             continue
 
-        # 負荷と容量と時間を気にしなければ必要ない処理群
+        # ========================================================== #
+        # Processing not necessary                                   #
+        # if you don't care about 'load', 'capacity', and 'time'.    #
+        # ========================================================== #
 
-        # ファイル名が既に存在する場合 (URLエンコード対応済み)
+        # If the file name already exists.
+        # (URL encoding already supported)
         if os.path.exists(output_dir + "/" + urllib.parse.unquote(file_name)):
             if status_skipped_show_flag:
                 download_status(path=output_dir + "/" + file_name, message="file exist")
         else:
-            # wordpress imageのリサイズファイルは対象外
+            # Resized wordpress image files are not included.
             if re.search('(.*?)x([0-9].*?)\.(.*?)', file_name) is None:
-                # 拡張子webpも対象外
+                # The extension 'webp' is not applicable.
                 if re.search('webp', file_name) is None:
-                    # 出力フラグ
+                    # output flags.
                     if status_success_show_flag:
                         download_status(status="success", path=output_dir + "/" + file_name, message="success to get")
                     save_file(file, output_dir + "/" + file_name)
@@ -107,18 +112,18 @@ def trance_path(path: str, url: str):
     :return: str
     """
     naked_url = get_naked_url(url)
-    # ./ 相対パス の時 (要replace)
+    # ./ relative path
     if './' in path:
-        ret = url + re.sub('../../Documents/作業中/', '', path)
-    # / プロトコル省略 絶対パスの時
+        ret = url + re.sub('./', '', path)
+    # / absolute path (protocol omitted)
     elif path[0:1] == "/":
         ret = naked_url[:-1] + path
-    # http* プロトコル付き 絶対パスの時
+    # http* Absolute path (with protocol)
     elif path[0:4] == "http":
         ret = path
+    # When ./ is a relative path without
     else:
         ret = url + path
-    # sample.jpg 相対パスの時
     return ret
 
 
